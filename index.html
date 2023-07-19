@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>sample</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script type="module">
+const obj = {
+  get a() {
+    return 1;
+  },
+}
+console.log(obj);
+console.log(obj["a"]);
+
+function log(message) {
+  function getAllProperties(obj, maxDepth) {
+    if (obj === null) {
+      return null;
+    }
+    if (typeof obj !== "object") {
+      return obj;
+    }
+
+    const cloneObj = {};
+    let currentObj = obj;
+
+    while (currentObj !== null) {
+      if (maxDepth <= 0) {
+        break;
+      }
+      const currentProps = Object.getOwnPropertyNames(currentObj);
+      currentProps.forEach(prop => {
+        if (!(prop in cloneObj)) {
+          const v = obj[prop];
+          cloneObj[prop] = getAllProperties(v, maxDepth - 1);
+        }
+      });
+      currentObj = Object.getPrototypeOf(currentObj);
+      maxDepth--;
+    }
+
+    return cloneObj;
+  }
+
+  const logElem = document.getElementById("log");
+  const messageStr = JSON.stringify(getAllProperties(message, 3), null, "  ");
+  logElem.textContent = messageStr + "\n" + logElem.textContent;
+  console.log(message);
+  console.log(messageStr);
+}
+class MapRoot extends HTMLElement {
+  #pointerDownPosition = null;
+
+  constructor() {
+    super();
+  }
+
+  connectedCallback () {
+    this.#initializeStyles();
+
+    let touchedIdentifier = null;
+    this.addEventListener("touchstart", (event) => {
+      log(event.changedTouches);
+      if (touchedIdentifier !== null && event.touches.length > 1) {
+        return;
+      }
+      for (const touch of event.changedTouches) {
+        touchedIdentifier = touch.identifier;
+        this.#onPointerDown(touch.clientX, touch.clientY);
+        break;
+      }
+      event.preventDefault();
+    }, {
+      passive: false,
+    });
+    this.addEventListener("touchmove", (event) => {
+      for (const touch of event.changedTouches) {
+        if (touch.identifier === touchedIdentifier) {
+          this.#onPointerMove(touch.clientX, touch.clientY);
+          break;
+        }
+      }
+    }, {
+      passive: false,
+    });
+    this.addEventListener("touchend", (event) => {
+      for (const touch of event.changedTouches) {
+        if (touch.identifier === touchedIdentifier) {
+          this.#onPointerUp(touch.clientX, touch.clientY);
+          touchedIdentifier = null;
+          break;
+        }
+      }
+    }, {
+      passive: false,
+    });
+    this.addEventListener("touchcancel", (event) => {
+      for (const touch of event.changedTouches) {
+        if (touch.identifier === touchedIdentifier) {
+          this.#onPointerCancel();
+          touchedIdentifier = null;
+          break;
+        }
+      }
+    }, {
+      passive: false,
+    });
+
+
+    this.addEventListener("mousedown", (event) => {
+      this.#onPointerDown(event.clientX, event.clientY);
+    }, {
+      passive: false,
+    });
+    this.addEventListener("mousemove", (event) => {
+      this.#onPointerMove(event.clientX, event.clientY);
+    }, {
+      passive: false,
+    });
+    this.addEventListener("mouseup", (event) => {
+      this.#onPointerUp(event.clientX, event.clientY);
+    }, {
+      passive: false,
+    });
+
+    this.addEventListener("wheel", (event) => {
+      this.#onWheel(event.clientX, event.clientY, event.deltaY);
+    }, {
+      passive: false,
+    });
+  }
+
+  #initializeStyles() {
+    //this.style.cursor = "grab";
+  }
+
+  #onPointerDown(eventClientX, eventClientY) {
+    const rect = this.getBoundingClientRect();
+    const eventX = eventClientX - rect.left;
+    const eventY = eventClientY - rect.top;
+
+    this.#pointerDownPosition = {x: eventX, y: eventY};
+  }
+  #onPointerMove(eventClientX, eventClientY) {
+    if (this.#pointerDownPosition === null) {
+      return;
+    }
+
+    const rect = this.getBoundingClientRect();
+    const eventX = eventClientX - rect.left;
+    const eventY = eventClientY - rect.top;
+
+    const deltaX = eventX - this.#pointerDownPosition.x;
+    const deltaY = eventY - this.#pointerDownPosition.y;
+
+    this.#pointerDownPosition = {x: eventX, y: eventY};
+
+    for (const elem of this.children) {
+      if (elem.tagName === "MAP-CELL") {
+        elem.drag(deltaX, deltaY);
+      }
+    }
+  }
+  #onPointerCancel() {
+    this.#pointerDownPosition = null;
+  }
+  #onPointerUp(eventClientX, eventClientY) {
+    if (this.#pointerDownPosition === null) {
+      return;
+    }
+
+    const rect = this.getBoundingClientRect();
+    const eventX = eventClientX - rect.left;
+    const eventY = eventClientY - rect.top;
+
+    this.#pointerDownPosition = null;
+  }
+
+  #onWheel(eventClientX, eventClientY, eventDeltaY) {
+    const rect = this.getBoundingClientRect();
+    const eventX = eventClientX - rect.left;
+    const eventY = eventClientY - rect.top;
+
+    let delta = Math.round(eventDeltaY / 125);
+    if (delta === 0) {
+      return;
+    }
+    let ratio = 1.0;
+    while (delta < 0) {
+      ratio = ratio * 1.1;
+      delta++;
+    }
+    while (delta > 0) {
+      ratio = ratio / 1.1;
+      delta--;
+    }
+
+    for (const elem of this.children) {
+      if (elem.tagName === "MAP-CELL") {
+        elem.zoom(eventX, eventY, ratio);
+      }
+    }
+
+    event.stopPropagation();
+  }
+}
+class MapCell extends HTMLElement {
+
+  // connect時に設定されていた属性を保持
+  #left;
+  #top;
+  #width;
+  #height;
+  #ratio;
+
+  // 現在の表示位置と倍率を保持
+  #currentLeft;
+  #currentTop;
+  #currentRatio;
+
+  #status;
+
+  static #STATUS_INVALID = 0;
+    // 動作できない要素
+  //static #STATUS_FIXED_PARENT = 1;
+    // 絶対的な大きさ固定の非表示の親要素
+  static #STATUS_CHILD = 2;
+    // 大きさ可変の子要素
+  static #STATUS_GRAND_CHILD = 3;
+    // 相対的な大きさ固定の孫以下の要素
+  //static #STATUS_HIDDEN_GRAND_CHILD = 4;
+    // 孫以下の非表示要素
+
+  constructor() {
+    super();
+    this.#status = null;
+  }
+
+  connectedCallback () {
+    this.#readAttributes();
+    this.#initializeStyles();
+  }
+
+  zoom(eventX, eventY, deltaRatio) {
+    //console.log({eventX, eventY, deltaRatio});
+
+    this.#currentLeft = eventX - (eventX - this.#currentLeft) * deltaRatio;
+    this.#currentTop = eventY - (eventY - this.#currentTop) * deltaRatio;
+    this.#currentRatio = this.#currentRatio * deltaRatio;
+
+    this.#setPositionStyle();
+  }
+
+  drag(deltaX, deltaY) {
+    //console.log({deltaX, deltaY});
+
+    this.#currentLeft = this.#currentLeft + deltaX;
+    this.#currentTop = this.#currentTop + deltaY;
+    
+    this.#setPositionStyle();
+  }
+
+  #readAttributes() {
+    const left   = this.getAttribute("left");
+    const top    = this.getAttribute("top");
+    const width  = this.getAttribute("width");
+    const height = this.getAttribute("height");
+    const ratio  = this.getAttribute("ratio");
+
+    if (left === null || top === null || width === null || height === null || ratio === null) {
+      this.#status = MapCell.#STATUS_INVALID;
+      return;
+    }
+    if (this.parentElement.tagName === "MAP-ROOT") {
+      this.#status = MapCell.#STATUS_CHILD;
+    } else if (this.parentElement.tagName === "MAP-CELL") {
+      this.#status = MapCell.#STATUS_GRAND_CHILD;
+    } else {
+      this.#status = MapCell.#STATUS_INVALID;
+      return;
+    }
+
+    this.#left   = parseInt(left);
+    this.#top    = parseInt(top);
+    this.#width  = parseInt(width);
+    this.#height = parseInt(height);
+    this.#ratio  = parseInt(ratio);
+  }
+
+  #initializeStyles() {
+    this.style.position = "absolute";
+    this.style.overflow = "hidden";
+
+    if (this.#status === MapCell.#STATUS_INVALID) {
+      this.style.left   = "0";
+      this.style.top    = "0";
+      this.style.width  = "100%";
+      this.style.height = "100%";
+      this.style.transform = null;
+      this.style.transformOrigin = null;
+
+      return;
+    }
+
+    this.style.width  = (this.#width  * this.#ratio) + "px";
+    this.style.height = (this.#height * this.#ratio) + "px";
+    this.style.transformOrigin = "top left";
+
+    this.#currentLeft  = this.#left;
+    this.#currentTop   = this.#top;
+    this.#currentRatio = this.#ratio;
+
+    this.#setPositionStyle();
+  }
+
+  #setPositionStyle() {
+    this.style.left   = this.#currentLeft + "px";
+    this.style.top    = this.#currentTop  + "px";
+
+    this.style.transform = `scale(${1.0 / this.#ratio / this.#ratio * this.#currentRatio})`;
+  }
+
+}
+
+class MapContent extends HTMLElement {
+  constructor() {
+    super();
+  }
+
+  connectedCallback () {
+    this.#initializeStyles();
+  }
+
+  #initializeStyles() {
+  }
+}
+
+customElements.define("map-root", MapRoot);
+customElements.define("map-cell", MapCell);
+customElements.define("map-content", MapContent);
+</script>
+<style>
+  #log {
+    white-space: pre-wrap;
+  }
+  map-root {
+    position: absolute;
+    top: 100px;
+    left: 100px;
+    height: 400px;
+    width: 400px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  map-cell {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+</style>
+</head>
+<body>
+  <div id="log"></div>
+  <map-root>
+    <map-cell left="100" top="100" width="100" height="100" ratio="1">
+      <map-content>
+        あいうえお
+      </map-content>
+    </map-cell>
+    <map-cell left="200" top="200" width="100" height="100" ratio="1">
+      <map-content>
+        かきくけこ
+      </map-content>
+      <map-cell left="50" top="50" width="50" height="50" ratio="2">
+        <map-content>
+          さしすせそ
+        </map-content>
+        <map-cell left="50" top="50" width="50" height="50" ratio="2">
+          <map-content>
+            なにぬねの
+          </map-content>
+        </map-cell>
+      </map-cell>
+    </map-cell>
+  </map-root>
+</body>
+</html>
