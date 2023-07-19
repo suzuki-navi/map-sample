@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 9");
+log("ver 0");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -80,8 +80,8 @@ class MapRoot extends HTMLElement {
     this.addEventListener("touchstart", (event) => {
       log({
         label: "touchstart",
-        touchedIdentifierFirst,
-        touchedIdentifierSecond,
+        first: touchedIdentifierFirst,
+        second: touchedIdentifierSecond,
         touchs: event.touches.length,
       });
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
@@ -111,8 +111,8 @@ class MapRoot extends HTMLElement {
     this.addEventListener("touchmove", (event) => {
       log({
         label: "touchmove",
-        touchedIdentifierFirst,
-        touchedIdentifierSecond,
+        first: touchedIdentifierFirst,
+        second: touchedIdentifierSecond,
         touchs: event.touches.length,
       });
       if (touchedIdentifierSecond === null) {
@@ -136,8 +136,8 @@ class MapRoot extends HTMLElement {
     this.addEventListener("touchend", (event) => {
       log({
         label: "touchend",
-        touchedIdentifierFirst,
-        touchedIdentifierSecond,
+        first: touchedIdentifierFirst,
+        second: touchedIdentifierSecond,
         touchs: event.touches.length,
       });
       if (touchedIdentifierSecond === null) {
@@ -161,8 +161,8 @@ class MapRoot extends HTMLElement {
     this.addEventListener("touchcancel", (event) => {
       log({
         label: "touchcancel",
-        touchedIdentifierFirst,
-        touchedIdentifierSecond,
+        first: touchedIdentifierFirst,
+        second: touchedIdentifierSecond,
         touchs: event.touches.length,
       });
       for (const touch of event.changedTouches) {
@@ -417,7 +417,7 @@ customElements.define("map-content", MapContent);
 <style>
   #log {
     white-space: pre-wrap;
-    font-size: 10px;
+    font-size: 8px;
   }
   map-root {
     position: absolute;
