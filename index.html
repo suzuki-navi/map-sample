@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 8");
+log("ver 9");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -53,145 +53,26 @@ class MapRoot extends HTMLElement {
   connectedCallback () {
     this.#initializeStyles();
 
-
-    function calcCenterAndDistanceTouchPoints(event) {
-      let [clientX1, clientY1, clientX2, clientY2] = [null, null, null, null];
-      for (const touch of event.touches) {
-        if (touch.identifier === touchedIdentifierFirst) {
-          clientX1 = touch.clientX;
-          clientY1 = touch.clientY;
-        } else if (touch.identifier === touchedIdentifierSecond) {
-          clientX2 = touch.clientX;
-          clientY2 = touch.clientY;
-        }
-      }
-      if (clientX1 === null && clientX2 === null) {
-        return null;
-      }
-      const clientX = (clientX1 + clientX2) / 2;
-      const clientY = (clientY1 + clientY2) / 2;
-      const distance = Math.hypot(clientX1 - clientX2, clientY1 - clientY2);
-      return [clientX, clientY, distance];
-    }
-    let touchedIdentifierFirst = null;
-    let touchedIdentifierSecond = null;
-    let touchPointsDistance = null;
-
-    this.addEventListener("touchstart", (event) => {
-      if (touchedIdentifierFirst === null || event.touches.length === 1) {
-        for (const touch of event.changedTouches) {
-          touchedIdentifierFirst = touch.identifier;
-          this.#onPointerDown(touch.clientX, touch.clientY);
-          break;
-        }
-        event.preventDefault();
-      }
-      if (touchedIdentifierFirst !== null && (touchedIdentifierSecond === null || event.touches.length === 2)) {
-        for (const touch of event.touches) {
-          if (touch.identifier === touchedIdentifierFirst) {
-            continue;
-          }
-          touchedIdentifierSecond = touch.identifier;
-          const [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
-          touchPointsDistance = distance;
-          this.#onPointerUp();
-          this.#onPointerDown(clientX, clientY);
-          break;
-        }
-        event.preventDefault();
-      }
-    }, {
-      passive: false,
-    });
-    this.addEventListener("touchmove", (event) => {
-      if (touchedIdentifierSecond === null) {
-        for (const touch of event.touches) {
-          if (touch.identifier === touchedIdentifierFirst) {
-            this.#onPointerMove(touch.clientX, touch.clientY);
-            break;
-          }
-        }
-      } else {
-        let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
-        let ratio = distance / touchPointsDistance;
-        touchPointsDistance = distance;
+    const handlers = {
+      onPointerDown: (clientX, clientY) => {
+        this.#onPointerDown(clientX, clientY);
+      },
+      onPointerMove: (clientX, clientY) => {
         this.#onPointerMove(clientX, clientY);
-        this.#onWheel(clientX, clientY, ratio);
-      }
-      event.preventDefault();
-    }, {
-      passive: false,
-    });
-    this.addEventListener("touchend", (event) => {
-      if (touchedIdentifierSecond === null) {
-        for (const touch of event.changedTouches) {
-          if (touch.identifier === touchedIdentifierFirst) {
-            this.#onPointerUp();
-            touchedIdentifierFirst = null;
-            break;
-          }
-        }
-      } else {
-        let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
+      },
+      onPointerUp: () => {
         this.#onPointerUp();
-        touchedIdentifierFirst = null;
-        touchedIdentifierSecond = null;
-      }
-      event.preventDefault();
-    }, {
-      passive: false,
-    });
-    this.addEventListener("touchcancel", (event) => {
-      for (const touch of event.changedTouches) {
-        if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
-          this.#onPointerCancel();
-          touchedIdentifierFirst = null;
-          touchedIdentifierSecond = null;
-          break;
-        }
-      }
-    }, {
-      passive: false,
-    });
+      },
+      onPointerCancel: () => {
+        this.#onPointerCancel();
+      },
+      onWheel: (clientX, clientY, ratio) => {
+        this.#onWheel(clientX, clientY, ratio);
+      },
+    }
 
-
-    this.addEventListener("mousedown", (event) => {
-      this.#onPointerDown(event.clientX, event.clientY);
-    }, {
-      passive: false,
-    });
-    this.addEventListener("mousemove", (event) => {
-      this.#onPointerMove(event.clientX, event.clientY);
-    }, {
-      passive: false,
-    });
-    this.addEventListener("mouseup", (event) => {
-      this.#onPointerUp();
-    }, {
-      passive: false,
-    });
-
-    this.addEventListener("wheel", (event) => {
-      let delta = Math.round(event.deltaY / 30);
-      if (delta === 0) {
-        return;
-      }
-      let ratio = 1.0;
-      while (delta < 0) {
-        ratio = ratio * 1.05;
-        delta++;
-      }
-      while (delta > 0) {
-        ratio = ratio / 1.05;
-        delta--;
-      }
-
-      this.#onWheel(event.clientX, event.clientY, ratio);
-
-      event.preventDefault();
-    }, {
-      passive: false,
-    });
+    provideMouseEventHandler(this, handlers);
+    provideTouchEventHandler(this, handlers);
   }
 
   #initializeStyles() {
@@ -248,6 +129,164 @@ class MapRoot extends HTMLElement {
     event.stopPropagation();
   }
 }
+
+function provideMouseEventHandler(rootElement, {
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onWheel,
+}) {
+  function onMouseDown(event) {
+    onPointerDown(event.clientX, event.clientY);
+  }
+
+  function onMouseMove(event) {
+    onPointerMove(event.clientX, event.clientY);
+  }
+
+  function onMouseUp(event) {
+    onPointerUp();
+  }
+
+  function onMouseWheel(event) {
+    let delta = Math.round(event.deltaY / 30);
+    if (delta === 0) {
+      return;
+    }
+    let ratio = 1.0;
+    while (delta < 0) {
+      ratio = ratio * 1.05;
+      delta++;
+    }
+    while (delta > 0) {
+      ratio = ratio / 1.05;
+      delta--;
+    }
+
+    onWheel(event.clientX, event.clientY, ratio);
+  }
+
+  rootElement.addEventListener("mousedown", onMouseDown,  { passive: false });
+  rootElement.addEventListener("mousemove", onMouseMove,  { passive: false });
+  rootElement.addEventListener("mouseup",   onMouseUp,    { passive: false });
+  rootElement.addEventListener("wheel",     onMouseWheel, { passive: false });
+}
+
+function provideTouchEventHandler(rootElement, {
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onWheel,
+}) {
+  let touchedIdentifierFirst = null;
+  let touchedIdentifierSecond = null;
+  let touchPointsDistance = null;
+
+  function calcCenterAndDistanceTouchPoints(event) {
+    let [clientX1, clientY1, clientX2, clientY2] = [null, null, null, null];
+    for (const touch of event.touches) {
+      if (touch.identifier === touchedIdentifierFirst) {
+        clientX1 = touch.clientX;
+        clientY1 = touch.clientY;
+      } else if (touch.identifier === touchedIdentifierSecond) {
+        clientX2 = touch.clientX;
+        clientY2 = touch.clientY;
+      }
+    }
+    if (clientX1 === null && clientX2 === null) {
+      return null;
+    }
+    const clientX = (clientX1 + clientX2) / 2;
+    const clientY = (clientY1 + clientY2) / 2;
+    const distance = Math.hypot(clientX1 - clientX2, clientY1 - clientY2);
+    return [clientX, clientY, distance];
+  }
+
+  function onTouchStart(event) {
+    if (touchedIdentifierFirst === null || event.touches.length === 1) {
+      // 1本目の指がタッチされた
+      for (const touch of event.changedTouches) {
+        touchedIdentifierFirst = touch.identifier;
+        onPointerDown(touch.clientX, touch.clientY);
+        break;
+      }
+      event.preventDefault();
+    }
+    if (touchedIdentifierFirst !== null && (touchedIdentifierSecond === null || event.touches.length === 2)) {
+      // 2本目の指がタッチされた
+      for (const touch of event.touches) {
+        if (touch.identifier === touchedIdentifierFirst) {
+          continue;
+        }
+        touchedIdentifierSecond = touch.identifier;
+        const [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
+        touchPointsDistance = distance;
+        onPointerUp();
+        onPointerDown(clientX, clientY);
+        break;
+      }
+      event.preventDefault();
+    }
+  }
+
+  function onTouchMove(event) {
+    if (touchedIdentifierSecond === null) {
+      // 1本の指がタッチしている状態で移動
+      for (const touch of event.touches) {
+        if (touch.identifier === touchedIdentifierFirst) {
+          onPointerMove(touch.clientX, touch.clientY);
+          break;
+        }
+      }
+    } else {
+      // 2本の指がタッチしている状態で移動
+      let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
+      let ratio = distance / touchPointsDistance;
+      touchPointsDistance = distance;
+      onPointerMove(clientX, clientY);
+      onWheel(clientX, clientY, ratio);
+    }
+    event.preventDefault();
+  }
+
+  function onTouchEnd(event) {
+    if (touchedIdentifierSecond === null) {
+      // 1本の指がタッチしている状態から、手が離れた
+      for (const touch of event.changedTouches) {
+        if (touch.identifier === touchedIdentifierFirst) {
+          onPointerUp();
+          touchedIdentifierFirst = null;
+          break;
+        }
+      }
+    } else {
+      // 2本の指がタッチしている状態から、手が離れた
+      let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
+      onPointerUp();
+      touchedIdentifierFirst = null;
+      touchedIdentifierSecond = null;
+    }
+    event.preventDefault();
+  }
+
+  function onTouchCancel(event) {
+    for (const touch of event.changedTouches) {
+      if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
+        onPointerCancel();
+        touchedIdentifierFirst = null;
+        touchedIdentifierSecond = null;
+        break;
+      }
+    }
+  }
+
+  rootElement.addEventListener("touchdstart", onTouchStart,   { passive: false });
+  rootElement.addEventListener("touchmove",   onTouchMove,   { passive: false });
+  rootElement.addEventListener("touchend",    onTouchEnd,     { passive: false });
+  rootElement.addEventListener("touchcancel", onTouchCancel, { passive: false });
+}
+
 class MapCell extends HTMLElement {
 
   // connect時に設定されていた属性を保持
