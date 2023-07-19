@@ -418,6 +418,37 @@ class MapContent extends HTMLElement {
 customElements.define("map-root", MapRoot);
 customElements.define("map-cell", MapCell);
 customElements.define("map-content", MapContent);
+
+function initializeMapRoot() {
+  function init(parent, depth) {
+    if (depth <= 0) {
+      return;
+    }
+    for (let i = 0; i < 2; i++) {
+      for (let j = 0; j < 2; j++) {
+        if (i === 0 || i === 3) {
+          if (j === 0) {
+            continue;
+          } else if (j === 3) {
+            continue;
+          }
+        }
+        const elem = document.createElement("map-cell");
+        elem.setAttribute("left", 100 * i);
+        elem.setAttribute("top", 100 * j);
+        elem.setAttribute("width", 100);
+        elem.setAttribute("height", 100);
+        elem.setAttribute("ratio", 2);
+        parent.append(elem);
+        init(elem, depth - 1);
+      }
+    }
+  }
+  const root = document.querySelector("map-root");
+  init(root, 4);
+}
+initializeMapRoot();
+
 </script>
 <style>
   #log {
@@ -426,41 +457,21 @@ customElements.define("map-content", MapContent);
   }
   map-root {
     position: absolute;
-    top: 100px;
-    left: 100px;
-    height: 400px;
-    width: 400px;
+    top: 0px;
+    left: 0px;
+    height: 200px;
+    width: 200px;
     overflow: hidden;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(0, 0, 0, 0.05);
   }
-  map-cell {
-    background-color: rgba(0, 0, 0, 0.1);
+  map-cell:empty {
+    background-color: rgba(0, 0, 0);
   }
 </style>
 </head>
 <body>
   <div id="log"></div>
   <map-root>
-    <map-cell left="100" top="100" width="100" height="100" ratio="1">
-      <map-content>
-        あいうえお
-      </map-content>
-    </map-cell>
-    <map-cell left="200" top="200" width="100" height="100" ratio="1">
-      <map-content>
-        かきくけこ
-      </map-content>
-      <map-cell left="50" top="50" width="50" height="50" ratio="2">
-        <map-content>
-          さしすせそ
-        </map-content>
-        <map-cell left="50" top="50" width="50" height="50" ratio="2">
-          <map-content>
-            なにぬねの
-          </map-content>
-        </map-cell>
-      </map-cell>
-    </map-cell>
   </map-root>
 </body>
 </html>
