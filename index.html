@@ -81,7 +81,7 @@ class MapRoot extends HTMLElement {
         label: "touchstart",
         touchedIdentifierFirst,
         touchedIdentifierSecond,
-        touchs: event.touches,
+        touchs: event.touches.length,
       });
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
         for (const touch of event.changedTouches) {
@@ -112,7 +112,7 @@ class MapRoot extends HTMLElement {
         label: "touchmove",
         touchedIdentifierFirst,
         touchedIdentifierSecond,
-        touchs: event.touches,
+        touchs: event.touches.length,
       });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
@@ -137,7 +137,7 @@ class MapRoot extends HTMLElement {
         label: "touchend",
         touchedIdentifierFirst,
         touchedIdentifierSecond,
-        touchs: event.touches,
+        touchs: event.touches.length,
       });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
@@ -162,7 +162,7 @@ class MapRoot extends HTMLElement {
         label: "touchcancel",
         touchedIdentifierFirst,
         touchedIdentifierSecond,
-        touchs: event.touches,
+        touchs: event.touches.length,
       });
       for (const touch of event.changedTouches) {
         if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
