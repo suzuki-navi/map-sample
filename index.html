@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 4");
+log("ver 5");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -231,7 +231,6 @@ class MapRoot extends HTMLElement {
     this.#pointerDownPosition = {x: eventX, y: eventY};
   }
   #onPointerMove(eventClientX, eventClientY) {
-    log({label: "pointermove", p: this.#pointerDownPosition, x: eventClientX, y: eventClientY});
     if (this.#pointerDownPosition === null) {
       return;
     }
@@ -243,6 +242,7 @@ class MapRoot extends HTMLElement {
     const deltaX = eventX - this.#pointerDownPosition.x;
     const deltaY = eventY - this.#pointerDownPosition.y;
 
+    log({label: "pointermove", deltaX, deltaY});
     this.#pointerDownPosition = {x: eventX, y: eventY};
 
     for (const elem of this.children) {
