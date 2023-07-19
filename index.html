@@ -5,15 +5,7 @@
 <title>sample</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script type="module">
-const obj = {
-  get a() {
-    return 1;
-  },
-}
-console.log(obj);
-console.log(obj["a"]);
-
-function log(message) {
+function log(obj) {
   function getAllProperties(obj, maxDepth) {
     if (obj === null) {
       return null;
@@ -27,6 +19,7 @@ function log(message) {
 
     while (currentObj !== null) {
       if (maxDepth <= 0) {
+        cloneObj["..."] = "...";
         break;
       }
       const currentProps = Object.getOwnPropertyNames(currentObj);
@@ -44,10 +37,9 @@ function log(message) {
   }
 
   const logElem = document.getElementById("log");
-  const messageStr = JSON.stringify(getAllProperties(message, 3), null, "  ");
-  logElem.textContent = messageStr + "\n" + logElem.textContent;
-  console.log(message);
-  console.log(messageStr);
+  const message = JSON.stringify(getAllProperties(obj, 3), null, "  ");
+  logElem.textContent = message + "\n" + logElem.textContent;
+  console.log(obj);
 }
 class MapRoot extends HTMLElement {
   #pointerDownPosition = null;
