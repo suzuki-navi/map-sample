@@ -42,7 +42,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver1");
+log("ver 2");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -52,8 +52,29 @@ class MapRoot extends HTMLElement {
   connectedCallback () {
     this.#initializeStyles();
 
+
+    function calcCenterAndDistanceTouchPoints(event) {
+      let [clientX1, clientY1, clientX2, clientY2] = [null, null, null, null];
+      for (const touch of event.touches) {
+        if (touch.identifier === touchedIdentifierFirst) {
+          clientX1 = touch.clientX;
+          clientY1 = touch.clientY;
+        } else if (touch.identifier === touchedIdentifierSecod) {
+          clientX2 = touch.clientX;
+          clientY2 = touch.clientY;
+        }
+      }
+      if (clientX1 === null && clientX2 === null) {
+        return null;
+      }
+      const clientX = (clientX1 + clientX2) / 2;
+      const clientY = (clientY1 + clientY2) / 2;
+      const distance = Math.hypot(clientX1 - clientX2, clientY1 - clientY2);
+      return [clientX, clientY, distance];
+    }
     let touchedIdentifierFirst = null;
     let touchedIdentifierSecond = null;
+    let touchPointsDistance = null;
 
     this.addEventListener("touchstart", (event) => {
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
@@ -70,6 +91,7 @@ class MapRoot extends HTMLElement {
             continue;
           }
           touchedIdentifierSecond = touch.identifier;
+          [_, _, touchPointsDistance] = calcCenterAndDistanceTouchPoints(event);
           this.#onPointerCancel();
           break;
         }
@@ -87,21 +109,9 @@ class MapRoot extends HTMLElement {
           }
         }
       } else {
-        let [clientX1, clientY1, clientX2, clientY2] = [null, null, null, null];
-        for (const touch of event.changedTouches) {
-          if (touch.identifier === touchedIdentifierFirst) {
-            clientX1 = touch.clientX;
-            clientY1 = touch.clientY;
-          } else if (touch.identifier === touchedIdentifierSecod) {
-            clientX2 = touch.clientX;
-            clientY2 = touch.clientY;
-          }
-        }
-        if (clientX1 !== null && clientX2 !== null) {
-          const clientX = (clientX1 + clientX2) / 2;
-          const clientY = (clientY1 + clientY2) / 2;
-          this.#onPointerMove(clientX, clientY);
-        }
+        log(event.touches);
+        let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
+        this.#onPointerMove(clientX, clientY);
       }
     }, {
       passive: false,
@@ -116,7 +126,10 @@ class MapRoot extends HTMLElement {
           }
         }
       } else {
-
+        let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
+        this.#onPointerUp(clientX, clientY);
+        touchedIdentifierFirst = null;
+        touchedIdentifierSecond = null;
       }
     }, {
       passive: false,
