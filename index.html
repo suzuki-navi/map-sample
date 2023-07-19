@@ -42,7 +42,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 3");
+log("ver 4");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -59,7 +59,7 @@ class MapRoot extends HTMLElement {
         if (touch.identifier === touchedIdentifierFirst) {
           clientX1 = touch.clientX;
           clientY1 = touch.clientY;
-        } else if (touch.identifier === touchedIdentifierSecod) {
+        } else if (touch.identifier === touchedIdentifierSecond) {
           clientX2 = touch.clientX;
           clientY2 = touch.clientY;
         }
@@ -77,6 +77,8 @@ class MapRoot extends HTMLElement {
     let touchPointsDistance = null;
 
     this.addEventListener("touchstart", (event) => {
+      log({touchedIdentifierFirst, touchedIdentifierSecond});
+      log(event.touches);
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
         for (const touch of event.changedTouches) {
           touchedIdentifierFirst = touch.identifier;
@@ -171,17 +173,17 @@ class MapRoot extends HTMLElement {
     });
 
     this.addEventListener("wheel", (event) => {
-      let delta = Math.round(event.deltaY / 125);
+      let delta = Math.round(event.deltaY / 30);
       if (delta === 0) {
         return;
       }
       let ratio = 1.0;
       while (delta < 0) {
-        ratio = ratio * 1.1;
+        ratio = ratio * 1.05;
         delta++;
       }
       while (delta > 0) {
-        ratio = ratio / 1.1;
+        ratio = ratio / 1.05;
         delta--;
       }
 
