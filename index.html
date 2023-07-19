@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 5");
+log("ver 6");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -100,9 +100,10 @@ class MapRoot extends HTMLElement {
             continue;
           }
           touchedIdentifierSecond = touch.identifier;
+          log({a: "2a"});
           [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
           touchPointsDistance = distance;
-          log({a: 2, touchPointsDistance});
+          log({a: "2b", touchPointsDistance});
           this.#onPointerUp();
           this.#onPointerDown(clientX, clientY);
           break;
