@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 9");
+log("ver 10");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -281,9 +281,9 @@ function provideTouchEventHandler(rootElement, {
     }
   }
 
-  rootElement.addEventListener("touchdstart", onTouchStart,   { passive: false });
+  rootElement.addEventListener("touchstart",  onTouchStart,  { passive: false });
   rootElement.addEventListener("touchmove",   onTouchMove,   { passive: false });
-  rootElement.addEventListener("touchend",    onTouchEnd,     { passive: false });
+  rootElement.addEventListener("touchend",    onTouchEnd,    { passive: false });
   rootElement.addEventListener("touchcancel", onTouchCancel, { passive: false });
 }
 
