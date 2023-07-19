@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 3");
+log("ver 4");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -231,6 +231,7 @@ class MapRoot extends HTMLElement {
     this.#pointerDownPosition = {x: eventX, y: eventY};
   }
   #onPointerMove(eventClientX, eventClientY) {
+    log({label: "pointermove", p: this.#pointerDownPosition, x: eventClientX, y: eventClientY});
     if (this.#pointerDownPosition === null) {
       return;
     }
