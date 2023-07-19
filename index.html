@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 0");
+log("ver 1");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -321,11 +321,12 @@ class MapCell extends HTMLElement {
   }
 
   drag(deltaX, deltaY) {
-    log({a: "drag", deltaX, deltaY});
 
     this.#currentLeft = this.#currentLeft + deltaX;
     this.#currentTop = this.#currentTop + deltaY;
     
+    log({a: "drag", deltaX, deltaY, currLeft: this.#currentLeft, currTop: this.#currentTop});
+
     this.#setPositionStyle();
   }
 
