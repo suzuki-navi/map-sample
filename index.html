@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 2");
+log("ver 3");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -116,7 +116,7 @@ class MapRoot extends HTMLElement {
         touchs: event.touches.length,
       });
       if (touchedIdentifierSecond === null) {
-        for (const touch of event.changedTouches) {
+        for (const touch of event.touches) {
           if (touch.identifier === touchedIdentifierFirst) {
             this.#onPointerMove(touch.clientX, touch.clientY);
             break;
