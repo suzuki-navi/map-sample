@@ -42,7 +42,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 5");
+log("ver 6");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -77,8 +77,12 @@ class MapRoot extends HTMLElement {
     let touchPointsDistance = null;
 
     this.addEventListener("touchstart", (event) => {
-      log({touchedIdentifierFirst, touchedIdentifierSecond});
-      log(event.touches);
+      log({
+        label: "touchstart",
+        touchedIdentifierFirst,
+        touchedIdentifierSecond,
+        touchs: event.touches,
+      });
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
         for (const touch of event.changedTouches) {
           touchedIdentifierFirst = touch.identifier;
@@ -112,7 +116,12 @@ class MapRoot extends HTMLElement {
           }
         }
       } else {
-        log(event.touches);
+        log({
+          label: "touchmove",
+          touchedIdentifierFirst,
+          touchedIdentifierSecond,
+          touchs: event.touches,
+        });
         let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
