@@ -38,11 +38,11 @@ function log(obj) {
 
   const logElem = document.getElementById("log");
   const message = JSON.stringify(getAllProperties(obj, 3), null, "  ");
-  logElem.textContent = message + "\n" + logElem.textContent;
+  logElem.textContent = message + "\n----\n" + logElem.textContent;
   console.log(obj);
 }
 
-log("ver 2");
+log("ver 3");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -90,9 +90,10 @@ class MapRoot extends HTMLElement {
           if (touch.identifier === touchedIdentifierFirst) {
             continue;
           }
+          [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
           touchedIdentifierSecond = touch.identifier;
-          [_, _, touchPointsDistance] = calcCenterAndDistanceTouchPoints(event);
-          this.#onPointerCancel();
+          touchPointsDistance = distance;
+          this.#onPointerDown(clientX, clientY);
           break;
         }
         event.preventDefault();
@@ -110,9 +111,13 @@ class MapRoot extends HTMLElement {
         }
       } else {
         log(event.touches);
-        let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
+        let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
+        let ratio = distance / touchPointsDistance;
+        touchPointsDistance = distance;
         this.#onPointerMove(clientX, clientY);
+        this.#onWheel(clientX, clientY, ratio);
       }
+      event.preventDefault();
     }, {
       passive: false,
     });
@@ -131,6 +136,7 @@ class MapRoot extends HTMLElement {
         touchedIdentifierFirst = null;
         touchedIdentifierSecond = null;
       }
+      event.preventDefault();
     }, {
       passive: false,
     });
@@ -165,7 +171,22 @@ class MapRoot extends HTMLElement {
     });
 
     this.addEventListener("wheel", (event) => {
-      this.#onWheel(event.clientX, event.clientY, event.deltaY);
+      let delta = Math.round(event.deltaY / 125);
+      if (delta === 0) {
+        return;
+      }
+      let ratio = 1.0;
+      while (delta < 0) {
+        ratio = ratio * 1.1;
+        delta++;
+      }
+      while (delta > 0) {
+        ratio = ratio / 1.1;
+        delta--;
+      }
+
+      this.#onWheel(event.clientX, event.clientY, ratio);
+
       event.preventDefault();
     }, {
       passive: false,
@@ -220,24 +241,10 @@ class MapRoot extends HTMLElement {
     this.#pointerDownPosition = null;
   }
 
-  #onWheel(eventClientX, eventClientY, eventDeltaY) {
+  #onWheel(eventClientX, eventClientY, ratio) {
     const rect = this.getBoundingClientRect();
     const eventX = eventClientX - rect.left;
     const eventY = eventClientY - rect.top;
-
-    let delta = Math.round(eventDeltaY / 125);
-    if (delta === 0) {
-      return;
-    }
-    let ratio = 1.0;
-    while (delta < 0) {
-      ratio = ratio * 1.1;
-      delta++;
-    }
-    while (delta > 0) {
-      ratio = ratio / 1.1;
-      delta--;
-    }
 
     for (const elem of this.children) {
       if (elem.tagName === "MAP-CELL") {
