@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 1");
+log("ver 2");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -125,6 +125,7 @@ class MapRoot extends HTMLElement {
         }
       } else {
         let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
+        log({distance, touchPointsDistance});
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
         this.#onPointerMove(clientX, clientY);
