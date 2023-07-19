@@ -426,12 +426,8 @@ function initializeMapRoot() {
     }
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 2; j++) {
-        if (i === 0 || i === 3) {
-          if (j === 0) {
-            continue;
-          } else if (j === 3) {
-            continue;
-          }
+        if (i === 0 && j === 0) {
+          continue;
         }
         const elem = document.createElement("map-cell");
         elem.setAttribute("left", 100 * i);
