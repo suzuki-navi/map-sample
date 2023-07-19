@@ -42,8 +42,6 @@ function log(obj) {
   console.log(obj);
 }
 class MapRoot extends HTMLElement {
-  #pointerDownPosition = null;
-
   constructor() {
     super();
   }
@@ -51,47 +49,81 @@ class MapRoot extends HTMLElement {
   connectedCallback () {
     this.#initializeStyles();
 
-    let touchedIdentifier = null;
+    let touchedIdentifierFirst = null;
+    let touchedIdentifierSecond = null;
+
     this.addEventListener("touchstart", (event) => {
-      log(event.changedTouches);
-      if (touchedIdentifier !== null && event.touches.length > 1) {
-        return;
+      if (touchedIdentifierFirst === null || event.touches.length === 1) {
+        for (const touch of event.changedTouches) {
+          touchedIdentifierFirst = touch.identifier;
+          this.#onPointerDown(touch.clientX, touch.clientY);
+          break;
+        }
+        event.preventDefault();
       }
-      for (const touch of event.changedTouches) {
-        touchedIdentifier = touch.identifier;
-        this.#onPointerDown(touch.clientX, touch.clientY);
-        break;
+      if (touchedIdentifierFirst !== null && (touchedIdentifierSecond === null || event.touches.length === 2)) {
+        for (const touch of event.changedTouches) {
+          if (touch.identifier === touchedIdentifierFirst) {
+            continue;
+          }
+          touchedIdentifierSecond = touch.identifier;
+          this.#onPointerCancel();
+          break;
+        }
+        event.preventDefault();
       }
-      event.preventDefault();
     }, {
       passive: false,
     });
     this.addEventListener("touchmove", (event) => {
-      for (const touch of event.changedTouches) {
-        if (touch.identifier === touchedIdentifier) {
-          this.#onPointerMove(touch.clientX, touch.clientY);
-          break;
+      if (touchedIdentifierSecond === null) {
+        for (const touch of event.changedTouches) {
+          if (touch.identifier === touchedIdentifierFirst) {
+            this.#onPointerMove(touch.clientX, touch.clientY);
+            break;
+          }
+        }
+      } else {
+        let [clientX1, clientY1, clientX2, clientY2] = [null, null, null, null];
+        for (const touch of event.changedTouches) {
+          if (touch.identifier === touchedIdentifierFirst) {
+            clientX1 = touch.clientX;
+            clientY1 = touch.clientY;
+          } else if (touch.identifier === touchedIdentifierSecod) {
+            clientX2 = touch.clientX;
+            clientY2 = touch.clientY;
+          }
+        }
+        if (clientX1 !== null && clientX2 !== null) {
+          const clientX = (clientX1 + clientX2) / 2;
+          const clientY = (clientY1 + clientY2) / 2;
+          this.#onPointerMove(clientX, clientY);
         }
       }
     }, {
       passive: false,
     });
     this.addEventListener("touchend", (event) => {
-      for (const touch of event.changedTouches) {
-        if (touch.identifier === touchedIdentifier) {
-          this.#onPointerUp(touch.clientX, touch.clientY);
-          touchedIdentifier = null;
-          break;
+      if (touchedIdentifierSecond === null) {
+        for (const touch of event.changedTouches) {
+          if (touch.identifier === touchedIdentifierFirst) {
+            this.#onPointerUp(touch.clientX, touch.clientY);
+            touchedIdentifierFirst = null;
+            break;
+          }
         }
+      } else {
+
       }
     }, {
       passive: false,
     });
     this.addEventListener("touchcancel", (event) => {
       for (const touch of event.changedTouches) {
-        if (touch.identifier === touchedIdentifier) {
+        if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
           this.#onPointerCancel();
-          touchedIdentifier = null;
+          touchedIdentifierFirst = null;
+          touchedIdentifierSecond = null;
           break;
         }
       }
@@ -118,6 +150,7 @@ class MapRoot extends HTMLElement {
 
     this.addEventListener("wheel", (event) => {
       this.#onWheel(event.clientX, event.clientY, event.deltaY);
+      event.preventDefault();
     }, {
       passive: false,
     });
@@ -126,6 +159,8 @@ class MapRoot extends HTMLElement {
   #initializeStyles() {
     //this.style.cursor = "grab";
   }
+
+  #pointerDownPosition = null;
 
   #onPointerDown(eventClientX, eventClientY) {
     const rect = this.getBoundingClientRect();
