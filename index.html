@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 7");
+log("ver 8");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -66,13 +66,11 @@ class MapRoot extends HTMLElement {
         }
       }
       if (clientX1 === null && clientX2 === null) {
-        log("null");
         return null;
       }
       const clientX = (clientX1 + clientX2) / 2;
       const clientY = (clientY1 + clientY2) / 2;
       const distance = Math.hypot(clientX1 - clientX2, clientY1 - clientY2);
-      log({a: 1, clientX, clientY, distance});
       return [clientX, clientY, distance];
     }
     let touchedIdentifierFirst = null;
@@ -80,12 +78,6 @@ class MapRoot extends HTMLElement {
     let touchPointsDistance = null;
 
     this.addEventListener("touchstart", (event) => {
-      log({
-        label: "touchstart",
-        first: touchedIdentifierFirst,
-        second: touchedIdentifierSecond,
-        touchs: event.touches.length,
-      });
       if (touchedIdentifierFirst === null || event.touches.length === 1) {
         for (const touch of event.changedTouches) {
           touchedIdentifierFirst = touch.identifier;
@@ -100,10 +92,8 @@ class MapRoot extends HTMLElement {
             continue;
           }
           touchedIdentifierSecond = touch.identifier;
-          log({a: "2a"});
           const [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
           touchPointsDistance = distance;
-          log({a: "2b", touchPointsDistance});
           this.#onPointerUp();
           this.#onPointerDown(clientX, clientY);
           break;
@@ -114,12 +104,6 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchmove", (event) => {
-      log({
-        label: "touchmove",
-        first: touchedIdentifierFirst,
-        second: touchedIdentifierSecond,
-        touchs: event.touches.length,
-      });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.touches) {
           if (touch.identifier === touchedIdentifierFirst) {
@@ -129,11 +113,9 @@ class MapRoot extends HTMLElement {
         }
       } else {
         let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
-        log({a: 3, distance, touchPointsDistance});
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
         this.#onPointerMove(clientX, clientY);
-        log({clientX, clientY, ratio});
         this.#onWheel(clientX, clientY, ratio);
       }
       event.preventDefault();
@@ -141,12 +123,6 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchend", (event) => {
-      log({
-        label: "touchend",
-        first: touchedIdentifierFirst,
-        second: touchedIdentifierSecond,
-        touchs: event.touches.length,
-      });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
           if (touch.identifier === touchedIdentifierFirst) {
@@ -166,12 +142,6 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchcancel", (event) => {
-      log({
-        label: "touchcancel",
-        first: touchedIdentifierFirst,
-        second: touchedIdentifierSecond,
-        touchs: event.touches.length,
-      });
       for (const touch of event.changedTouches) {
         if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
           this.#onPointerCancel();
@@ -316,8 +286,6 @@ class MapCell extends HTMLElement {
   }
 
   zoom(eventX, eventY, deltaRatio) {
-    log({a: "zoom", eventX, eventY, deltaRatio});
-
     this.#currentLeft = eventX - (eventX - this.#currentLeft) * deltaRatio;
     this.#currentTop = eventY - (eventY - this.#currentTop) * deltaRatio;
     this.#currentRatio = this.#currentRatio * deltaRatio;
