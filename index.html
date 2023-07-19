@@ -42,7 +42,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 6");
+log("ver 7");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -108,6 +108,12 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchmove", (event) => {
+      log({
+        label: "touchmove",
+        touchedIdentifierFirst,
+        touchedIdentifierSecond,
+        touchs: event.touches,
+      });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
           if (touch.identifier === touchedIdentifierFirst) {
@@ -116,12 +122,6 @@ class MapRoot extends HTMLElement {
           }
         }
       } else {
-        log({
-          label: "touchmove",
-          touchedIdentifierFirst,
-          touchedIdentifierSecond,
-          touchs: event.touches,
-        });
         let [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
@@ -133,6 +133,12 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchend", (event) => {
+      log({
+        label: "touchend",
+        touchedIdentifierFirst,
+        touchedIdentifierSecond,
+        touchs: event.touches,
+      });
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
           if (touch.identifier === touchedIdentifierFirst) {
@@ -152,6 +158,12 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("touchcancel", (event) => {
+      log({
+        label: "touchcancel",
+        touchedIdentifierFirst,
+        touchedIdentifierSecond,
+        touchs: event.touches,
+      });
       for (const touch of event.changedTouches) {
         if (touch.identifier === touchedIdentifierFirst || touch.identifier === touchedIdentifierSecond) {
           this.#onPointerCancel();
