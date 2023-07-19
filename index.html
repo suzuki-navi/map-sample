@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 6");
+log("ver 7");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -100,6 +100,7 @@ class MapRoot extends HTMLElement {
           touchedIdentifierSecond = touch.identifier;
           [clientX, clientY, distance] = calcCenterAndDistanceTouchPoints(event);
           touchPointsDistance = distance;
+          this.#onPointerUp();
           this.#onPointerDown(clientX, clientY);
           break;
         }
@@ -127,6 +128,7 @@ class MapRoot extends HTMLElement {
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
         this.#onPointerMove(clientX, clientY);
+        log({ratio});
         //this.#onWheel(clientX, clientY, ratio);
       }
       event.preventDefault();
@@ -143,14 +145,14 @@ class MapRoot extends HTMLElement {
       if (touchedIdentifierSecond === null) {
         for (const touch of event.changedTouches) {
           if (touch.identifier === touchedIdentifierFirst) {
-            this.#onPointerUp(touch.clientX, touch.clientY);
+            this.#onPointerUp();
             touchedIdentifierFirst = null;
             break;
           }
         }
       } else {
         let [clientX, clientY, _] = calcCenterAndDistanceTouchPoints(event);
-        this.#onPointerUp(clientX, clientY);
+        this.#onPointerUp();
         touchedIdentifierFirst = null;
         touchedIdentifierSecond = null;
       }
@@ -189,7 +191,7 @@ class MapRoot extends HTMLElement {
       passive: false,
     });
     this.addEventListener("mouseup", (event) => {
-      this.#onPointerUp(event.clientX, event.clientY);
+      this.#onPointerUp();
     }, {
       passive: false,
     });
@@ -242,7 +244,6 @@ class MapRoot extends HTMLElement {
     const deltaX = eventX - this.#pointerDownPosition.x;
     const deltaY = eventY - this.#pointerDownPosition.y;
 
-    log({label: "pointermove", deltaX, deltaY});
     this.#pointerDownPosition = {x: eventX, y: eventY};
 
     for (const elem of this.children) {
@@ -254,15 +255,7 @@ class MapRoot extends HTMLElement {
   #onPointerCancel() {
     this.#pointerDownPosition = null;
   }
-  #onPointerUp(eventClientX, eventClientY) {
-    if (this.#pointerDownPosition === null) {
-      return;
-    }
-
-    const rect = this.getBoundingClientRect();
-    const eventX = eventClientX - rect.left;
-    const eventY = eventClientY - rect.top;
-
+  #onPointerUp() {
     this.#pointerDownPosition = null;
   }
 
