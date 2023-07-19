@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 9");
+log("ver 0");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -311,7 +311,7 @@ class MapCell extends HTMLElement {
   }
 
   zoom(eventX, eventY, deltaRatio) {
-    console.log({a: "zoom", eventX, eventY, deltaRatio});
+    log({a: "zoom", eventX, eventY, deltaRatio});
 
     this.#currentLeft = eventX - (eventX - this.#currentLeft) * deltaRatio;
     this.#currentTop = eventY - (eventY - this.#currentTop) * deltaRatio;
@@ -321,7 +321,7 @@ class MapCell extends HTMLElement {
   }
 
   drag(deltaX, deltaY) {
-    console.log({a: "drag", deltaX, deltaY});
+    log({a: "drag", deltaX, deltaY});
 
     this.#currentLeft = this.#currentLeft + deltaX;
     this.#currentTop = this.#currentTop + deltaY;
