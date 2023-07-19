@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 7");
+log("ver 8");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -128,8 +128,8 @@ class MapRoot extends HTMLElement {
         let ratio = distance / touchPointsDistance;
         touchPointsDistance = distance;
         this.#onPointerMove(clientX, clientY);
-        log({ratio});
-        //this.#onWheel(clientX, clientY, ratio);
+        log({clientX, clientY, ratio});
+        this.#onWheel(clientX, clientY, ratio);
       }
       event.preventDefault();
     }, {
@@ -263,6 +263,7 @@ class MapRoot extends HTMLElement {
     const rect = this.getBoundingClientRect();
     const eventX = eventClientX - rect.left;
     const eventY = eventClientY - rect.top;
+    log({eventX, eventY});
 
     for (const elem of this.children) {
       if (elem.tagName === "MAP-CELL") {
