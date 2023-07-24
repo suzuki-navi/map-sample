@@ -327,8 +327,6 @@ class MapCell extends HTMLElement {
     // 大きさ可変の子要素
   static #STATUS_GRAND_CHILD = 3;
     // 相対的な大きさ固定の孫以下の要素
-  static #STATUS_HIDDEN_GRAND_CHILD = 4;
-    // 孫以下の非表示要素
 
   constructor() {
     super();
@@ -366,73 +364,6 @@ class MapCell extends HTMLElement {
     this.#onRatioPositionChanged();
     this.#setPositionStyle();
   }
-
-  /*
-  get left() {
-    return this.#currentLeft;
-  }
-  get top () {
-    return this.#currentTop;
-  }
-  get right() {
-    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
-    return this.#currentLeft + this.#width * viewRatio;
-  }
-  get bottom() {
-    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
-    return this.#currentTop + this.#height * viewRatio;
-  }
-  */
-
-  /*
-  isCoveringWhole() {
-    if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
-      return true;
-    } else if (this.#status === MapCell.#STATUS_CHILD) {
-      if (this.#currentLeft > 0) {
-        return false;
-      }
-      if (this.#currentTop > 0) {
-        return false;
-      }
-      const parentWidth = this.parentElement.clientWidth;
-      const parentHeight = this.parentElement.clientHeight;
-      if (this.right < parentWidth) {
-        return false;
-      }
-      if (this.bottom < parentHeight) {
-        return false;
-      }
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  isInView() {
-    if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
-      return true;
-    } else if (this.#status === MapCell.#STATUS_CHILD) {
-      const parentWidth = this.parentElement.clientWidth;
-      const parentHeight = this.parentElement.clientHeight;
-      if (this.#currentLeft >= parentWidth) {
-        return false;
-      }
-      if (this.#currentTop >= parentHeight) {
-        return false;
-      }
-      if (this.right <= 0) {
-        return false;
-      }
-      if (this.bottom <= 0) {
-        return false;
-      }
-      return true;
-    } else {
-      return true;
-    }
-  }
-  */
 
   #readAttributes() {
     const left   = this.getAttribute("left");
@@ -543,7 +474,7 @@ class MapCell extends HTMLElement {
   #isQueued = false;
 
   #dispatchEventViewRatioChanged() {
-    if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
+    if (this.#oldAbsoluteViewRatio === this.#newAbsoluteViewRatio) {
       return;
     }
     if (this.#isQueued) {
@@ -551,13 +482,14 @@ class MapCell extends HTMLElement {
     }
     setTimeout(() => {
       this.#isQueued = false;
-      if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
+      if (this.#oldAbsoluteViewRatio === this.#newAbsoluteViewRatio) {
         return;
       }
       //console.log(this.dataset.label + ": " + oldAbsoluteViewRatio + " -> " + newAbsoluteViewRatio);
       const event = new Event("viewRatioChanged");
       event.oldAbsoluteViewRatio = this.#oldAbsoluteViewRatio;
       event.newAbsoluteViewRatio = this.#newAbsoluteViewRatio;
+      this.#oldAbsoluteViewRatio = this.#newAbsoluteViewRatio;
       this.dispatchEvent(event);
     }, 0);
     this.#isQueued = true;
@@ -612,9 +544,10 @@ function initializeMapRoot() {
   function initChildren(parent, label) {
     let childrenExist = false;
     parent.addEventListener("viewRatioChanged", event => {
-      //console.log(label + ": " + event.oldAbsoluteViewRatio + " -> " + event.newAbsoluteViewRatio);
+      console.log(label + ": " + event.oldAbsoluteViewRatio + " -> " + event.newAbsoluteViewRatio);
       const ratioThreshold = 0.03;
       if (event.newAbsoluteViewRatio !== null && event.newAbsoluteViewRatio >= ratioThreshold && !childrenExist) {
+        console.log(label + ": build children");
         childrenExist = true;
         const fragment = document.createDocumentFragment();
         for (let i = 0; i < 2; i++) {
@@ -637,12 +570,12 @@ function initializeMapRoot() {
             elem.setAttribute("ratio", 2);
             setLabel(elem, label + n);
             initChildren(elem, label + n);
-            console.log("build: " + label + n);
             fragment.append(elem);
           }
         }
         parent.append(fragment);
       } else if ((event.newAbsoluteViewRatio === null || event.newAbsoluteViewRatio < ratioThreshold) && childrenExist) {
+        console.log(label + ": remove children");
         childrenExist = false;
         for (const elem of [...parent.children]) {
           if (elem.tagName === "MAP-CELL") {
