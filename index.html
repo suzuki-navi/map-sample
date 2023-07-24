@@ -43,7 +43,7 @@ function log(obj) {
   console.log(obj);
 }
 
-log("ver 10");
+log("ver 11");
 
 class MapRoot extends HTMLElement {
   constructor() {
@@ -305,13 +305,13 @@ class MapCell extends HTMLElement {
 
   static #STATUS_INVALID = 0;
     // 動作できない要素
-  //static #STATUS_FIXED_PARENT = 1;
+  static #STATUS_FIXED_PARENT = 1;
     // 絶対的な大きさ固定の非表示の親要素
   static #STATUS_CHILD = 2;
     // 大きさ可変の子要素
   static #STATUS_GRAND_CHILD = 3;
     // 相対的な大きさ固定の孫以下の要素
-  //static #STATUS_HIDDEN_GRAND_CHILD = 4;
+  static #STATUS_HIDDEN_GRAND_CHILD = 4;
     // 孫以下の非表示要素
 
   constructor() {
@@ -325,19 +325,84 @@ class MapCell extends HTMLElement {
   }
 
   zoom(eventX, eventY, deltaRatio) {
+    if (this.#status !== MapCell.#STATUS_CHILD) {
+      throw new Error();
+    }
+
     this.#currentLeft = eventX - (eventX - this.#currentLeft) * deltaRatio;
     this.#currentTop = eventY - (eventY - this.#currentTop) * deltaRatio;
-    this.#currentRatio = this.#currentRatio * deltaRatio;
+    if (this.#currentRatio > 0) {
+      this.#currentRatio = this.#currentRatio * deltaRatio;
+    }
 
+    this.#onRatioPositionChanged();
     this.#setPositionStyle();
   }
 
   drag(deltaX, deltaY) {
+    if (this.#status !== MapCell.#STATUS_CHILD) {
+      throw new Error();
+    }
 
     this.#currentLeft = this.#currentLeft + deltaX;
     this.#currentTop = this.#currentTop + deltaY;
     
+    this.#onRatioPositionChanged();
     this.#setPositionStyle();
+  }
+
+  isCoveringWhole() {
+    if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
+      return true;
+    } else if (this.#status === MapCell.#STATUS_CHILD) {
+      if (this.#currentLeft > 0) {
+        return false;
+      }
+      if (this.#currentTop > 0) {
+        return false;
+      }
+      const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+      const parentWidth = this.parentElement.clientWidth;
+      const parentHeight = this.parentElement.clientHeight;
+      const right = this.#currentLeft + this.#width * viewRatio;
+      const bottom = this.#currentTop + this.#height * viewRatio;
+      if (right < parentWidth) {
+        return false;
+      }
+      if (bottom < parentHeight) {
+        return false;
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  isInView() {
+    if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
+      return true;
+    } else if (this.#status === MapCell.#STATUS_CHILD) {
+      const parentWidth = this.parentElement.clientWidth;
+      const parentHeight = this.parentElement.clientHeight;
+      if (this.#currentLeft >= parentWidth) {
+        return false;
+      }
+      if (this.#currentTop >= parentHeight) {
+        return false;
+      }
+      const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+      const right = this.#currentLeft + this.#width * viewRatio;
+      const bottom = this.#currentTop + this.#height * viewRatio;
+      if (right <= 0) {
+        return false;
+      }
+      if (bottom <= 0) {
+        return false;
+      }
+      return true;
+    } else {
+      return true;
+    }
   }
 
   #readAttributes() {
@@ -390,6 +455,13 @@ class MapCell extends HTMLElement {
     this.#currentTop   = this.#top;
     this.#currentRatio = this.#ratio;
 
+    if (this.#status === MapCell.#STATUS_CHILD) {
+      this.#onRatioPositionChanged();
+    } else if (this.#status === MapCell.#STATUS_GRAND_CHILD) {
+      this.#onViewRationChanged(this.parentElement.#lastViewRatio);
+    } else {
+      throw new Error();
+    }
     this.#setPositionStyle();
   }
 
@@ -397,9 +469,38 @@ class MapCell extends HTMLElement {
     this.style.left   = this.#currentLeft + "px";
     this.style.top    = this.#currentTop  + "px";
 
-    this.style.transform = `scale(${1.0 / this.#ratio / this.#ratio * this.#currentRatio})`;
+    if (this.#currentRatio <= 0) {
+      this.style.display = "none";
+      this.style.transform = null;
+    } else {
+      this.style.display = null;
+      const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+      this.style.transform = `scale(${viewRatio})`;
+    }
   }
 
+  #onRatioPositionChanged() {
+    if (this.#status !== MapCell.#STATUS_CHILD) {
+      throw new Error();
+    }
+    this.#onViewRationChanged(1.0);
+  }
+
+  #lastViewRatio = null;
+  #onViewRationChanged(viewRatio) {
+    const nextViewRatio = viewRatio * this.#currentRatio / (this.#ratio * this.#ratio);
+    this.#onViewRationChangedTest(this.#lastViewRatio, nextViewRatio);
+    for (const elem of this.children) {
+      if (elem.tagName === "MAP-CELL") {
+        elem.#onViewRationChanged(nextViewRatio);
+      }
+    }
+    this.#lastViewRatio = nextViewRatio;
+  }
+
+  #onViewRationChangedTest(oldViewRatio, newViewRatio) {
+    console.log(this.dataset.label + ": " + oldViewRatio + " -> " + newViewRatio);
+  }
 }
 
 class MapContent extends HTMLElement {
@@ -420,28 +521,43 @@ customElements.define("map-cell", MapCell);
 customElements.define("map-content", MapContent);
 
 function initializeMapRoot() {
-  function init(parent, depth) {
+  function setLabel(elem, label) {
+    const contentElement = document.createElement("map-content");
+    contentElement.append(label);
+    elem.append(contentElement);
+    elem.dataset.label = label;
+  }
+  function init(parent, depth, label) {
     if (depth <= 0) {
       return;
     }
+
     for (let i = 0; i < 2; i++) {
       for (let j = 0; j < 2; j++) {
         if (i === 0 && j === 0) {
           continue;
         }
+        const n = (() => {
+          if (j === 0) {
+            return 1;
+          } else {
+            return i + 2;
+          }
+        })();
         const elem = document.createElement("map-cell");
         elem.setAttribute("left", 100 * i);
         elem.setAttribute("top", 100 * j);
         elem.setAttribute("width", 100);
         elem.setAttribute("height", 100);
         elem.setAttribute("ratio", 2);
+        setLabel(elem, label + n);
         parent.append(elem);
-        init(elem, depth - 1);
+        init(elem, depth - 1, label + n);
       }
     }
   }
   const root = document.querySelector("map-root");
-  init(root, 4);
+  init(root, 4, "");
 }
 initializeMapRoot();
 
@@ -460,7 +576,10 @@ initializeMapRoot();
     overflow: hidden;
     background-color: rgba(0, 0, 0, 0.05);
   }
-  map-cell:empty {
+  map-content {
+    color: #888;
+  }
+  map-cell:not(:has(> map-cell)) {
     background-color: rgba(0, 0, 0);
   }
 </style>
