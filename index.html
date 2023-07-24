@@ -601,10 +601,7 @@ function initializeMapRoot() {
   function initChildren(parent, label) {
     let childrenExist = false;
     parent.addEventListener("viewRatioChanged", event => {
-      if (event.target !== parent) {
-        return;
-      }
-      //console.log(label + ": " + event.oldAbsoluteViewRatio + " -> " + event.newAbsoluteViewRatio);
+      console.log(label + ": " + event.oldAbsoluteViewRatio + " -> " + event.newAbsoluteViewRatio);
       if (event.newAbsoluteViewRatio < 0.1) {
         return;
       }
@@ -670,10 +667,13 @@ initializeMapRoot();
     background-color: rgba(0, 0, 0, 0.05);
   }
   map-content {
-    color: #888;
+    color: #000;
   }
   map-cell:not(:has(> map-cell)) {
     background-color: rgba(0, 0, 0);
+  }
+  map-cell:not(:has(> map-cell)) map-content {
+    color: #FFF;
   }
 </style>
 </head>
