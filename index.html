@@ -616,32 +616,32 @@ function initializeMapRoot() {
       const ratioThreshold = 0.03;
       if (event.newAbsoluteViewRatio !== null && event.newAbsoluteViewRatio >= ratioThreshold && !childrenExist) {
         childrenExist = true;
-        //setTimeout(() => {
-          for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 2; j++) {
-              if (i === 0 && j === 0) {
-                continue;
-              }
-              const n = (() => {
-                if (i === 0) {
-                  return 1;
-                } else {
-                  return j + 2;
-                }
-              })();
-              const elem = document.createElement("map-cell");
-              elem.setAttribute("left", 100 * j);
-              elem.setAttribute("top", 100 * i);
-              elem.setAttribute("width", 100);
-              elem.setAttribute("height", 100);
-              elem.setAttribute("ratio", 2);
-              setLabel(elem, label + n);
-              initChildren(elem, label + n);
-              console.log("build: " + label + n);
-              parent.append(elem);
+        const fragment = document.createDocumentFragment();
+        for (let i = 0; i < 2; i++) {
+          for (let j = 0; j < 2; j++) {
+            if (i === 0 && j === 0) {
+              continue;
             }
+            const n = (() => {
+              if (i === 0) {
+                return 1;
+              } else {
+                return j + 2;
+              }
+            })();
+            const elem = document.createElement("map-cell");
+            elem.setAttribute("left", 100 * j);
+            elem.setAttribute("top", 100 * i);
+            elem.setAttribute("width", 100);
+            elem.setAttribute("height", 100);
+            elem.setAttribute("ratio", 2);
+            setLabel(elem, label + n);
+            initChildren(elem, label + n);
+            console.log("build: " + label + n);
+            fragment.append(elem);
           }
-        //}, 17);
+        }
+        parent.append(fragment);
       } else if ((event.newAbsoluteViewRatio === null || event.newAbsoluteViewRatio < ratioThreshold) && childrenExist) {
         childrenExist = false;
         for (const elem of [...parent.children]) {
