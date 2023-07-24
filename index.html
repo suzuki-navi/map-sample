@@ -487,7 +487,7 @@ class MapCell extends HTMLElement {
     if (this.#status === MapCell.#STATUS_CHILD) {
       this.#onRatioPositionChanged();
     } else if (this.#status === MapCell.#STATUS_GRAND_CHILD) {
-      this.#onViewRatioChanged(this.parentElement.#lastAbsoluteViewRatio);
+      this.#onViewRatioChanged(this.parentElement.#newAbsoluteViewRatio);
     } else {
       throw new Error();
     }
@@ -515,7 +515,8 @@ class MapCell extends HTMLElement {
     this.#onViewRatioChanged(1.0);
   }
 
-  #lastAbsoluteViewRatio = null;
+  #oldAbsoluteViewRatio = null;
+  #newAbsoluteViewRatio = null;
 
   #onViewRatioChanged(absoluteViewRatio) {
     if (this.#ratio === null) {
@@ -523,33 +524,40 @@ class MapCell extends HTMLElement {
     }
     const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
 
-    const isInView = this.isInView(0, 0, this.#width * this.#ratio, this.#height * this.#ratio);
-    if (!isInView) {
-      return;
+    const isInView = (absoluteViewRatio !== null) && this.isInView(0, 0, this.#width * this.#ratio, this.#height * this.#ratio);
+    if (isInView) {
+      this.#newAbsoluteViewRatio = absoluteViewRatio * viewRatio;
+    } else {
+      this.#newAbsoluteViewRatio = null;
     }
 
-    const newAbsoluteViewRatio = absoluteViewRatio * viewRatio;
-    const oldAbsoluteViewRatio = this.#lastAbsoluteViewRatio;
-    const diff = (newAbsoluteViewRatio !== oldAbsoluteViewRatio);
-    this.#lastAbsoluteViewRatio = newAbsoluteViewRatio;
-
-    if (diff) {
-      this.#dispatchEventViewRatioChanged(oldAbsoluteViewRatio, newAbsoluteViewRatio);
-    }
+    this.#dispatchEventViewRatioChanged();
 
     for (const elem of this.children) {
       if (elem.tagName === "MAP-CELL") {
-        elem.#onViewRatioChanged(this.#lastAbsoluteViewRatio);
+        elem.#onViewRatioChanged(this.#newAbsoluteViewRatio);
       }
     }
   }
 
-  #dispatchEventViewRatioChanged(oldAbsoluteViewRatio, newAbsoluteViewRatio) {
-    //console.log(this.dataset.label + ": " + oldAbsoluteViewRatio + " -> " + newAbsoluteViewRatio);
-    const event = new Event("viewRatioChanged");
-    event.oldAbsoluteViewRatio = oldAbsoluteViewRatio;
-    event.newAbsoluteViewRatio = newAbsoluteViewRatio;
-    this.dispatchEvent(event);
+  #isQueued = false;
+
+  #dispatchEventViewRatioChanged() {
+    if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
+      return;
+    }
+    setTimeout(() => {
+      this.#isQueued = false;
+      if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
+        return;
+      }
+      //console.log(this.dataset.label + ": " + oldAbsoluteViewRatio + " -> " + newAbsoluteViewRatio);
+      const event = new Event("viewRatioChanged");
+      event.oldAbsoluteViewRatio = this.#oldAbsoluteViewRatio;
+      event.newAbsoluteViewRatio = this.#newAbsoluteViewRatio;
+      this.dispatchEvent(event);
+    }, 0);
+    this.#isQueued = true;
   }
 
   isInView(x1, y1, x2, y2) {
@@ -605,7 +613,7 @@ function initializeMapRoot() {
       const ratioThreshold = 0.03;
       if (event.newAbsoluteViewRatio !== null && event.newAbsoluteViewRatio >= ratioThreshold && !childrenExist) {
         childrenExist = true;
-        setTimeout(() => {
+        //setTimeout(() => {
           for (let i = 0; i < 2; i++) {
             for (let j = 0; j < 2; j++) {
               if (i === 0 && j === 0) {
@@ -630,7 +638,7 @@ function initializeMapRoot() {
               parent.append(elem);
             }
           }
-        }, 17);
+        //}, 17);
       } else if ((event.newAbsoluteViewRatio === null || event.newAbsoluteViewRatio < ratioThreshold) && childrenExist) {
         childrenExist = false;
         for (const elem of [...parent.children]) {
