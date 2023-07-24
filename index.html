@@ -128,6 +128,22 @@ class MapRoot extends HTMLElement {
 
     event.stopPropagation();
   }
+
+  isInView(x1, y1, x2, y2) {
+    if (x2 < 0) {
+      return false;
+    }
+    if (y2 < 0) {
+      return false;
+    }
+    if (x1 > this.clientWidth) {
+      return false;
+    }
+    if (y1 > this.clientHeight) {
+      return false;
+    }
+    return true;
+  }
 }
 
 function provideMouseEventHandler(rootElement, {
@@ -294,7 +310,7 @@ class MapCell extends HTMLElement {
   #top;
   #width;
   #height;
-  #ratio;
+  #ratio = null; // connectedCallback が呼び出されたら数値が設定される
 
   // 現在の表示位置と倍率を保持
   #currentLeft;
@@ -331,7 +347,7 @@ class MapCell extends HTMLElement {
 
     this.#currentLeft = eventX - (eventX - this.#currentLeft) * deltaRatio;
     this.#currentTop = eventY - (eventY - this.#currentTop) * deltaRatio;
-    if (this.#currentRatio > 0) {
+    if (this.#currentRatio !== null) {
       this.#currentRatio = this.#currentRatio * deltaRatio;
     }
 
@@ -351,6 +367,7 @@ class MapCell extends HTMLElement {
     this.#setPositionStyle();
   }
 
+  /*
   get left() {
     return this.#currentLeft;
   }
@@ -361,12 +378,13 @@ class MapCell extends HTMLElement {
     const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
     return this.#currentLeft + this.#width * viewRatio;
   }
-
   get bottom() {
     const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
     return this.#currentTop + this.#height * viewRatio;
   }
+  */
 
+  /*
   isCoveringWhole() {
     if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
       return true;
@@ -414,6 +432,7 @@ class MapCell extends HTMLElement {
       return true;
     }
   }
+  */
 
   #readAttributes() {
     const left   = this.getAttribute("left");
@@ -468,7 +487,7 @@ class MapCell extends HTMLElement {
     if (this.#status === MapCell.#STATUS_CHILD) {
       this.#onRatioPositionChanged();
     } else if (this.#status === MapCell.#STATUS_GRAND_CHILD) {
-      this.#onViewRatioChanged(this.parentElement.#lastViewRatio);
+      this.#onViewRatioChanged(this.parentElement.#lastAbsoluteViewRatio);
     } else {
       throw new Error();
     }
@@ -494,32 +513,64 @@ class MapCell extends HTMLElement {
       throw new Error();
     }
     this.#onViewRatioChanged(1.0);
-    this.#onViewRatioChangedForChildren(1.0);
   }
 
-  #lastViewRatio = null;
-  #onViewRatioChanged(viewRatio) {
-    const nextViewRatio = viewRatio * this.#currentRatio / (this.#ratio * this.#ratio);
-    this.#dispatchEventViewRatioChanged(this.#lastViewRatio, nextViewRatio);
-    this.#lastViewRatio = nextViewRatio;
-  }
+  #lastAbsoluteViewRatio = null;
 
-  #onViewRatioChangedForChildren(viewRatio) {
-    const nextViewRatio = viewRatio * this.#currentRatio / (this.#ratio * this.#ratio);
+  #onViewRatioChanged(absoluteViewRatio) {
+    if (this.#ratio === null) {
+      return;
+    }
+    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+
+    const isInView = this.isInView(0, 0, this.#width * this.#ratio, this.#height * this.#ratio);
+    if (!isInView) {
+      return;
+    }
+
+    const newAbsoluteViewRatio = absoluteViewRatio * viewRatio;
+    const oldAbsoluteViewRatio = this.#lastAbsoluteViewRatio;
+    if (newAbsoluteViewRatio === oldAbsoluteViewRatio) {
+      return;
+    }
+    this.#lastAbsoluteViewRatio = newAbsoluteViewRatio;
+
+    this.#dispatchEventViewRatioChanged(oldAbsoluteViewRatio, newAbsoluteViewRatio);
+
     for (const elem of this.children) {
       if (elem.tagName === "MAP-CELL") {
-        elem.#onViewRatioChanged(nextViewRatio);
-        elem.#onViewRatioChangedForChildren(nextViewRatio);
+        elem.#onViewRatioChanged(this.#lastAbsoluteViewRatio);
       }
     }
   }
 
-  #dispatchEventViewRatioChanged(oldViewRatio, newViewRatio) {
-    console.log(this.dataset.label + ": " + oldViewRatio + " -> " + newViewRatio);
+  #dispatchEventViewRatioChanged(oldAbsoluteViewRatio, newAbsoluteViewRatio) {
+    //console.log(this.dataset.label + ": " + oldAbsoluteViewRatio + " -> " + newAbsoluteViewRatio);
     const event = new Event("viewRatioChanged");
-    event.oldViewRatio = oldViewRatio;
-    event.newViewRatio = newViewRatio;
+    event.oldAbsoluteViewRatio = oldAbsoluteViewRatio;
+    event.newAbsoluteViewRatio = newAbsoluteViewRatio;
     this.dispatchEvent(event);
+  }
+
+  isInView(x1, y1, x2, y2) {
+    if (x2 < 0) {
+      return false;
+    }
+    if (y2 < 0) {
+      return false;
+    }
+    if (x1 > this.#width * this.#ratio) {
+      return false;
+    }
+    if (y1 > this.#height * this.#ratio) {
+      return false;
+    }
+    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+    const px1 = this.#currentLeft + x1 * viewRatio;
+    const py1 = this.#currentTop + y1 * viewRatio;
+    const px2 = this.#currentLeft + x2 * viewRatio;
+    const py2 = this.#currentTop + y2 * viewRatio;
+    return this.parentElement.isInView(px1, py1, px2, py2);
   }
 }
 
@@ -550,7 +601,11 @@ function initializeMapRoot() {
   function initChildren(parent, label) {
     let childrenExist = false;
     parent.addEventListener("viewRatioChanged", event => {
-      if (event.newViewRatio < 0.1) {
+      if (event.target !== parent) {
+        return;
+      }
+      //console.log(label + ": " + event.oldAbsoluteViewRatio + " -> " + event.newAbsoluteViewRatio);
+      if (event.newAbsoluteViewRatio < 0.1) {
         return;
       }
       if (childrenExist) {
@@ -576,8 +631,9 @@ function initializeMapRoot() {
           elem.setAttribute("height", 100);
           elem.setAttribute("ratio", 2);
           setLabel(elem, label + n);
-          parent.append(elem);
           initChildren(elem, label + n);
+          console.log("build: " + label + n);
+          parent.append(elem);
         }
       }
     });
