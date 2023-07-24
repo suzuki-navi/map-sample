@@ -351,6 +351,22 @@ class MapCell extends HTMLElement {
     this.#setPositionStyle();
   }
 
+  get left() {
+    return this.#currentLeft;
+  }
+  get top () {
+    return this.#currentTop;
+  }
+  get right() {
+    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+    return this.#currentLeft + this.#width * viewRatio;
+  }
+
+  get bottom() {
+    const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
+    return this.#currentTop + this.#height * viewRatio;
+  }
+
   isCoveringWhole() {
     if (this.#status === MapCell.#STATUS_FIXED_PARENT) {
       return true;
@@ -361,15 +377,12 @@ class MapCell extends HTMLElement {
       if (this.#currentTop > 0) {
         return false;
       }
-      const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
       const parentWidth = this.parentElement.clientWidth;
       const parentHeight = this.parentElement.clientHeight;
-      const right = this.#currentLeft + this.#width * viewRatio;
-      const bottom = this.#currentTop + this.#height * viewRatio;
-      if (right < parentWidth) {
+      if (this.right < parentWidth) {
         return false;
       }
-      if (bottom < parentHeight) {
+      if (this.bottom < parentHeight) {
         return false;
       }
       return true;
@@ -390,13 +403,10 @@ class MapCell extends HTMLElement {
       if (this.#currentTop >= parentHeight) {
         return false;
       }
-      const viewRatio = this.#currentRatio / (this.#ratio * this.#ratio);
-      const right = this.#currentLeft + this.#width * viewRatio;
-      const bottom = this.#currentTop + this.#height * viewRatio;
-      if (right <= 0) {
+      if (this.right <= 0) {
         return false;
       }
-      if (bottom <= 0) {
+      if (this.bottom <= 0) {
         return false;
       }
       return true;
@@ -458,7 +468,7 @@ class MapCell extends HTMLElement {
     if (this.#status === MapCell.#STATUS_CHILD) {
       this.#onRatioPositionChanged();
     } else if (this.#status === MapCell.#STATUS_GRAND_CHILD) {
-      this.#onViewRationChanged(this.parentElement.#lastViewRatio);
+      this.#onViewRatioChanged(this.parentElement.#lastViewRatio);
     } else {
       throw new Error();
     }
@@ -483,23 +493,33 @@ class MapCell extends HTMLElement {
     if (this.#status !== MapCell.#STATUS_CHILD) {
       throw new Error();
     }
-    this.#onViewRationChanged(1.0);
+    this.#onViewRatioChanged(1.0);
+    this.#onViewRatioChangedForChildren(1.0);
   }
 
   #lastViewRatio = null;
-  #onViewRationChanged(viewRatio) {
+  #onViewRatioChanged(viewRatio) {
     const nextViewRatio = viewRatio * this.#currentRatio / (this.#ratio * this.#ratio);
-    this.#onViewRationChangedTest(this.#lastViewRatio, nextViewRatio);
-    for (const elem of this.children) {
-      if (elem.tagName === "MAP-CELL") {
-        elem.#onViewRationChanged(nextViewRatio);
-      }
-    }
+    this.#dispatchEventViewRatioChanged(this.#lastViewRatio, nextViewRatio);
     this.#lastViewRatio = nextViewRatio;
   }
 
-  #onViewRationChangedTest(oldViewRatio, newViewRatio) {
+  #onViewRatioChangedForChildren(viewRatio) {
+    const nextViewRatio = viewRatio * this.#currentRatio / (this.#ratio * this.#ratio);
+    for (const elem of this.children) {
+      if (elem.tagName === "MAP-CELL") {
+        elem.#onViewRatioChanged(nextViewRatio);
+        elem.#onViewRatioChangedForChildren(nextViewRatio);
+      }
+    }
+  }
+
+  #dispatchEventViewRatioChanged(oldViewRatio, newViewRatio) {
     console.log(this.dataset.label + ": " + oldViewRatio + " -> " + newViewRatio);
+    const event = new Event("viewRatioChanged");
+    event.oldViewRatio = oldViewRatio;
+    event.newViewRatio = newViewRatio;
+    this.dispatchEvent(event);
   }
 }
 
@@ -527,37 +547,54 @@ function initializeMapRoot() {
     elem.append(contentElement);
     elem.dataset.label = label;
   }
-  function init(parent, depth, label) {
-    if (depth <= 0) {
-      return;
-    }
-
-    for (let i = 0; i < 2; i++) {
-      for (let j = 0; j < 2; j++) {
-        if (i === 0 && j === 0) {
-          continue;
-        }
-        const n = (() => {
-          if (j === 0) {
-            return 1;
-          } else {
-            return i + 2;
-          }
-        })();
-        const elem = document.createElement("map-cell");
-        elem.setAttribute("left", 100 * i);
-        elem.setAttribute("top", 100 * j);
-        elem.setAttribute("width", 100);
-        elem.setAttribute("height", 100);
-        elem.setAttribute("ratio", 2);
-        setLabel(elem, label + n);
-        parent.append(elem);
-        init(elem, depth - 1, label + n);
+  function initChildren(parent, label) {
+    let childrenExist = false;
+    parent.addEventListener("viewRatioChanged", event => {
+      if (event.newViewRatio < 0.1) {
+        return;
       }
-    }
+      if (childrenExist) {
+        return;
+      }
+      childrenExist = true;
+      for (let i = 0; i < 2; i++) {
+        for (let j = 0; j < 2; j++) {
+          if (i === 0 && j === 0) {
+            continue;
+          }
+          const n = (() => {
+            if (i === 0) {
+              return 1;
+            } else {
+              return j + 2;
+            }
+          })();
+          const elem = document.createElement("map-cell");
+          elem.setAttribute("left", 100 * j);
+          elem.setAttribute("top", 100 * i);
+          elem.setAttribute("width", 100);
+          elem.setAttribute("height", 100);
+          elem.setAttribute("ratio", 2);
+          setLabel(elem, label + n);
+          parent.append(elem);
+          initChildren(elem, label + n);
+        }
+      }
+    });
   }
   const root = document.querySelector("map-root");
-  init(root, 4, "");
+  const rootCell = (() => {
+    const elem = document.createElement("map-cell");
+    elem.setAttribute("left", 0);
+    elem.setAttribute("top", 0);
+    elem.setAttribute("width", 200);
+    elem.setAttribute("height", 200);
+    elem.setAttribute("ratio", 1);
+    setLabel(elem, "");
+    return elem;
+  })();
+  initChildren(rootCell, "");
+  root.append(rootCell);
 }
 initializeMapRoot();
 
