@@ -546,6 +546,9 @@ class MapCell extends HTMLElement {
     if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
       return;
     }
+    if (this.#isQueued) {
+      return;
+    }
     setTimeout(() => {
       this.#isQueued = false;
       if (this.#oldAbsoluteViewRatio == this.#newAbsoluteViewRatio) {
